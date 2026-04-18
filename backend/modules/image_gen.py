@@ -23,7 +23,7 @@ def generate_images(
             f"?width=1080&height=1920&nologo=true"
         )
 
-        for attempt in range(3):   # retry up to 3x
+        for attempt in range(3):
             try:
                 data = httpx.get(url, timeout=60).content
                 path = out_dir / f"{job_id}_{i}.png"

@@ -4,8 +4,12 @@ from moviepy.editor import (
     concatenate_videoclips, CompositeVideoClip, TextClip
 )
 from moviepy.video.tools.subtitles import SubtitlesClip
+from moviepy.config import change_settings
 import whisper, pathlib, logging
 from config import settings
+
+# Point MoviePy to ImageMagick (Windows)
+change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
 
 log = logging.getLogger("VideoEditor")
 
@@ -21,7 +25,7 @@ def add_captions(video, audio_path: str):
     model = get_whisper()
     result = model.transcribe(audio_path, fp16=False)
 
-    # Fix: SubtitlesClip needs ((start, end), text) format not (start, end, text)
+    # SubtitlesClip needs ((start, end), text) format
     subs = [
         ((seg["start"], seg["end"]), seg["text"].strip())
         for seg in result["segments"]
@@ -59,7 +63,7 @@ def create_reel(job: dict) -> str:
              .set_duration(dur_each)
              .resize((1080, 1920))
              .fadein(0.3).fadeout(0.3))
-        c = c.resize(lambda t: 1 + 0.02 * t)  # Ken Burns zoom effect
+        c = c.resize(lambda t: 1 + 0.02 * t)
         clips.append(c)
 
     video = concatenate_videoclips(clips, method="compose")
