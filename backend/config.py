@@ -1,4 +1,6 @@
-from pydantic_settings import BaseSettings
+# backend/config.py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     OPENAI_API_KEY: str
@@ -12,8 +14,11 @@ class Settings(BaseSettings):
     OUTPUT_DIR: str = "./output"
     MAX_REELS_PER_DAY: int = 3
     TREND_INTERVAL_MINUTES: int = 15
+    TIKTOK_ACCESS_TOKEN: str = "skip_for_now"
+    INSTAGRAM_ACCESS_TOKEN: str = "skip_for_now"
+    INSTAGRAM_BUSINESS_ID: str = "skip_for_now"
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 settings = Settings()
