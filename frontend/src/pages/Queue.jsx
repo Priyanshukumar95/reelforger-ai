@@ -1,81 +1,348 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
-const api = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json());
+const initialQueue = [
+  {
+    id: 1,
+    name: "viral_hook_v5.mp4",
+    duration: "0:32",
+    score: 91,
+    status: "Processing",
+    progress: 67,
+    tags: ["hook", "trending"],
+  },
+  {
+    id: 2,
+    name: "product_launch_reel.mp4",
+    duration: "0:58",
+    score: 84,
+    status: "Queued",
+    progress: 0,
+    tags: ["product", "promo"],
+  },
+  {
+    id: 3,
+    name: "storytime_ugc_02.mp4",
+    duration: "1:12",
+    score: 76,
+    status: "Queued",
+    progress: 0,
+    tags: ["ugc", "story"],
+  },
+  {
+    id: 4,
+    name: "trending_audio_v3.mp4",
+    duration: "0:45",
+    score: 88,
+    status: "Review",
+    progress: 100,
+    tags: ["audio", "viral"],
+  },
+  {
+    id: 5,
+    name: "brand_collab_clip.mp4",
+    duration: "0:22",
+    score: 79,
+    status: "Review",
+    progress: 100,
+    tags: ["brand"],
+  },
+  {
+    id: 6,
+    name: "tutorial_short_01.mp4",
+    duration: "0:55",
+    score: 82,
+    status: "Queued",
+    progress: 0,
+    tags: ["tutorial"],
+  },
+];
+
+const statusColors = {
+  Processing: "#ffb300",
+  Queued: "#6b6b8a",
+  Review: "#00d4ff",
+  Approved: "#00e5a0",
+  Rejected: "#ff4d6d",
+};
 
 export default function Queue() {
-  const qc = useQueryClient();
+  const [items, setItems] = useState(initialQueue);
+  const [filter, setFilter] = useState("All");
+  const [hovered, setHovered] = useState(null);
 
-  const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ["queue"],
-    queryFn: () => api("/queue"),
-    refetchInterval: 5_000,
-  });
-
-  const approve = useMutation({
-    mutationFn: (id) => api(`/jobs/${id}/approve`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries(["queue"]),
-  });
-
-  const reject = useMutation({
-    mutationFn: (id) => api(`/jobs/${id}/reject`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries(["queue"]),
-  });
-
-  if (isLoading) return <div className="p-8 text-gray-500">Loading queue…</div>;
-
-  if (jobs.length === 0)
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-6xl mb-4">🎬</p>
-          <p className="text-gray-400 text-lg">No reels awaiting review</p>
-          <p className="text-gray-600 text-sm mt-2">
-            Trigger the pipeline from Settings
-          </p>
-        </div>
-      </div>
-    );
+  const filters = ["All", "Processing", "Queued", "Review"];
+  const filtered =
+    filter === "All" ? items : items.filter((i) => i.status === filter);
+  const updateStatus = (id, status) =>
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-cyan-400">🎬 Review Queue</h1>
-        <p className="text-gray-500 mt-1 text-sm">
-          {jobs.length} reel(s) awaiting review
+    <div
+      style={{
+        padding: "28px 32px",
+        minHeight: "100vh",
+        background: "#050508",
+        fontFamily: "'Syne', sans-serif",
+      }}
+    >
+      <div style={{ marginBottom: 28 }}>
+        <h1
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#f0eeff",
+            letterSpacing: "-0.5px",
+            marginBottom: 4,
+          }}
+        >
+          Queue
+        </h1>
+        <p style={{ color: "#6b6b8a", fontSize: 14 }}>
+          Manage and review your video pipeline
         </p>
       </div>
-      <div className="space-y-4">
-        {jobs.map((job) => (
-          <div
-            key={job.id}
-            className="bg-gray-900 rounded-2xl p-5 border border-gray-800 flex gap-4"
+      <div
+        style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}
+      >
+        {filters.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              padding: "7px 16px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              border:
+                filter === f
+                  ? "1px solid #7c4dff"
+                  : "1px solid rgba(120,80,255,0.12)",
+              background:
+                filter === f ? "rgba(124,77,255,0.12)" : "transparent",
+              color: filter === f ? "#a78bfa" : "#6b6b8a",
+              cursor: "pointer",
+              boxShadow:
+                filter === f ? "0 0 20px rgba(124,77,255,0.2)" : "none",
+              transition: "all 0.2s",
+            }}
           >
-            <video
-              src={job.video_url || ""}
-              controls
-              className="w-28 h-48 rounded-xl object-cover bg-black flex-shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-white text-base truncate">
-                {job.id}
-              </p>
-              <p className="text-gray-500 text-xs mt-2">{job.status}</p>
-            </div>
-            <div className="flex flex-col gap-2 flex-shrink-0">
-              <button
-                onClick={() => approve.mutate(job.id)}
-                disabled={approve.isPending}
-                className="bg-green-600 hover:bg-green-500 disabled:opacity-40 px-4 py-2 rounded-xl text-sm font-semibold"
+            {f}
+          </button>
+        ))}
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 12,
+            color: "#6b6b8a",
+            alignSelf: "center",
+          }}
+        >
+          {filtered.length} items
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {filtered.map((item) => (
+          <div
+            key={item.id}
+            onMouseEnter={() => setHovered(item.id)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              background: hovered === item.id ? "#13131e" : "#0d0d14",
+              border: `1px solid ${
+                hovered === item.id
+                  ? "rgba(124,77,255,0.35)"
+                  : "rgba(120,80,255,0.12)"
+              }`,
+              borderRadius: 12,
+              padding: "16px 20px",
+              transform: hovered === item.id ? "translateX(4px)" : "none",
+              boxShadow:
+                hovered === item.id ? "0 0 20px rgba(124,77,255,0.15)" : "none",
+              transition: "all 0.2s",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div
+                style={{
+                  width: 72,
+                  height: 44,
+                  borderRadius: 6,
+                  flexShrink: 0,
+                  background:
+                    "linear-gradient(135deg, rgba(124,77,255,0.2), rgba(0,212,255,0.1))",
+                  border: "1px solid rgba(120,80,255,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  color: "#a78bfa",
+                }}
               >
-                ✓ Approve
-              </button>
-              <button
-                onClick={() => reject.mutate(job.id)}
-                disabled={reject.isPending}
-                className="bg-gray-800 hover:bg-red-900/50 border border-red-800/50 px-4 py-2 rounded-xl text-sm font-semibold"
-              >
-                ✗ Reject
-              </button>
+                ▶
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                      color: "#f0eeff",
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                  {item.tags.map((t) => (
+                    <span
+                      key={t}
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 7px",
+                        borderRadius: 4,
+                        background: "rgba(124,77,255,0.1)",
+                        border: "1px solid rgba(124,77,255,0.2)",
+                        color: "#a78bfa",
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: "#6b6b8a" }}>
+                    ⏱ {item.duration}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#6b6b8a" }}>
+                    Score:{" "}
+                    <span
+                      style={{
+                        color:
+                          item.score >= 85
+                            ? "#00e5a0"
+                            : item.score >= 75
+                            ? "#ffb300"
+                            : "#ff4d6d",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.score}
+                    </span>
+                  </span>
+                  {item.status === "Processing" && (
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <div
+                        style={{
+                          width: 80,
+                          height: 4,
+                          background: "rgba(255,255,255,0.05)",
+                          borderRadius: 2,
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${item.progress}%`,
+                            background: "#ffb300",
+                            borderRadius: 2,
+                            boxShadow: "0 0 6px #ffb300",
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: 11, color: "#ffb300" }}>
+                        {item.progress}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    background: `${statusColors[item.status]}20`,
+                    border: `1px solid ${statusColors[item.status]}50`,
+                    color: statusColors[item.status],
+                  }}
+                >
+                  {item.status}
+                </span>
+                {item.status === "Review" && (
+                  <>
+                    <button
+                      onClick={() => updateStatus(item.id, "Approved")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(0,229,160,0.25)";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(0,229,160,0.1)";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: "rgba(0,229,160,0.1)",
+                        border: "1px solid rgba(0,229,160,0.3)",
+                        color: "#00e5a0",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      ✓ Approve
+                    </button>
+                    <button
+                      onClick={() => updateStatus(item.id, "Rejected")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(255,77,109,0.25)";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(255,77,109,0.1)";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: "rgba(255,77,109,0.1)",
+                        border: "1px solid rgba(255,77,109,0.3)",
+                        color: "#ff4d6d",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      ✕ Reject
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))}
