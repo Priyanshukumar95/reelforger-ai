@@ -52,9 +52,12 @@ def create_reel(job: dict) -> str:
     images     = job["image_paths"]
     audio_path = job["audio_path"]
     job_id     = job["id"]
-    duration   = 30
 
+    # Use actual audio duration instead of hardcoded 30 seconds
     audio    = AudioFileClip(audio_path)
+    duration = audio.duration
+    log.info(f"[Editor] Audio duration: {duration:.2f}s")
+
     dur_each = duration / max(len(images), 1)
     clips    = []
 
@@ -67,7 +70,7 @@ def create_reel(job: dict) -> str:
         clips.append(c)
 
     video = concatenate_videoclips(clips, method="compose")
-    video = video.set_audio(audio.set_duration(duration))
+    video = video.set_audio(audio)
     video = add_captions(video, audio_path)
 
     out = pathlib.Path(settings.OUTPUT_DIR)
