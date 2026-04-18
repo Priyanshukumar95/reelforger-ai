@@ -1,5 +1,6 @@
 # backend/modules/image_gen.py
 import httpx, pathlib, logging, time
+from urllib.parse import quote
 from config import settings
 
 log = logging.getLogger("ImageGen")
@@ -18,11 +19,11 @@ def generate_images(
         prompt = f"cinematic 9:16 vertical reel about {hook}, high quality, no text, no watermark"
         url = (
             f"https://image.pollinations.ai/prompt/"
-            f"{httpx.utils.quote(prompt)}"
+            f"{quote(prompt)}"
             f"?width=1080&height=1920&nologo=true"
         )
 
-        for attempt in range(3):   # retry up to 3x
+        for attempt in range(3):
             try:
                 data = httpx.get(url, timeout=60).content
                 path = out_dir / f"{job_id}_{i}.png"
