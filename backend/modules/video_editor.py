@@ -20,10 +20,16 @@ def get_whisper():
 def add_captions(video, audio_path: str):
     model = get_whisper()
     result = model.transcribe(audio_path, fp16=False)
+
+    # Fix: SubtitlesClip needs ((start, end), text) format not (start, end, text)
     subs = [
-        (seg["start"], seg["end"], seg["text"].strip())
+        ((seg["start"], seg["end"]), seg["text"].strip())
         for seg in result["segments"]
     ]
+
+    if not subs:
+        log.warning("[Editor] No subtitles generated, skipping captions")
+        return video
 
     def make_caption(txt):
         return TextClip(
