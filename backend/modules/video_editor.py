@@ -5,14 +5,17 @@ from moviepy.editor import (
 )
 from moviepy.video.tools.subtitles import SubtitlesClip
 from moviepy.config import change_settings
-import whisper, pathlib, logging
+import whisper, pathlib, logging, os, platform
 from config import settings
 
-# Point MoviePy to ImageMagick (Windows)
-change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
+# Auto-detect OS and set correct ImageMagick path
+if platform.system() == "Windows":
+    change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
+else:
+    # Linux / Docker
+    change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
 log = logging.getLogger("VideoEditor")
-
 _whisper_model = None
 
 def get_whisper():
@@ -25,7 +28,7 @@ def add_captions(video, audio_path: str):
     model = get_whisper()
     result = model.transcribe(audio_path, fp16=False)
 
-    # SubtitlesClip needs ((start, end), text) format
+    # Correct format for SubtitlesClip — ((start, end), text)
     subs = [
         ((seg["start"], seg["end"]), seg["text"].strip())
         for seg in result["segments"]
@@ -71,7 +74,12 @@ def create_reel(job: dict) -> str:
 
     video = concatenate_videoclips(clips, method="compose")
     video = video.set_audio(audio)
-    video = add_captions(video, audio_path)
+
+    # Try captions — if it fails, video still gets created without them
+    try:
+        video = add_captions(video, audio_path)
+    except Exception as e:
+        log.warning(f"[Editor] Captions failed, skipping: {e}")
 
     out = pathlib.Path(settings.OUTPUT_DIR)
     out.mkdir(exist_ok=True)
