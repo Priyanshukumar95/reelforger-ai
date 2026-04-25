@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     ffmpeg imagemagick libmagic1 \
-    fonts-dejavu-core \
+    && sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' /etc/ImageMagick-6/policy.xml \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
