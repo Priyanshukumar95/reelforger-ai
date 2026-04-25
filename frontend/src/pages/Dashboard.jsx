@@ -1,16 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
 
-const socket = io({ path: "/ws" });
+const STAT_CARDS = [
+  {
+    key: "total",
+    label: "Generated",
+    color: "text-cyan-400",
+    bg: "bg-cyan-400/5",
+  },
+  {
+    key: "pending",
+    label: "Pending",
+    color: "text-yellow-400",
+    bg: "bg-yellow-400/5",
+  },
+  {
+    key: "published",
+    label: "Published",
+    color: "text-green-400",
+    bg: "bg-green-400/5",
+  },
+  { key: "failed", label: "Failed", color: "text-red-400", bg: "bg-red-400/5" },
+];
 
 export default function Dashboard() {
   const [feed, setFeed] = useState([]);
 
-  useEffect(() => {
-    socket.on("job_update", (job) => setFeed((p) => [job, ...p.slice(0, 9)]));
-    return () => socket.off("job_update");
-  }, []);
+useEffect(() => {
+  const ws = new WebSocket("ws://localhost:8000/ws");
+  ws.onmessage = (e) => {
+    const job = JSON.parse(e.data);
+    setLiveJobs(prev => [job, ...prev.slice(0, 9)]);
+  };
+  return () => ws.close();
+}, []);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["stats"],
