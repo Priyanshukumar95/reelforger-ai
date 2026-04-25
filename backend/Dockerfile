@@ -2,7 +2,12 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     ffmpeg imagemagick libmagic1 \
-    && sed -i 's|<policy domain="path" rights="none" pattern="@\*"/>|<policy domain="path" rights="read|write" pattern="@*"/>|g' /etc/ImageMagick-7/policy.xml \
+    && python3 -c "\
+import re; \
+content = open('/etc/ImageMagick-7/policy.xml').read(); \
+content = content.replace('rights=\"none\" pattern=\"@*\"', 'rights=\"read|write\" pattern=\"@*\"'); \
+open('/etc/ImageMagick-7/policy.xml', 'w').write(content); \
+print('Patched OK')" \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
