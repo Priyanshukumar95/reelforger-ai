@@ -1,44 +1,47 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-const STAT_CARDS = [
-  {
-    key: "total",
-    label: "Generated",
-    color: "text-cyan-400",
-    bg: "bg-cyan-400/5",
-  },
-  {
-    key: "pending",
-    label: "Pending",
-    color: "text-yellow-400",
-    bg: "bg-yellow-400/5",
-  },
-  {
-    key: "published",
-    label: "Published",
-    color: "text-green-400",
-    bg: "bg-green-400/5",
-  },
-  { key: "failed", label: "Failed", color: "text-red-400", bg: "bg-red-400/5" },
+const PIPELINE_STEPS = [
+  { key: "trend", label: "🔍 Trend Hunt" },
+  { key: "script", label: "✍️ AI Script" },
+  { key: "voice", label: "🎙️ Voiceover" },
+  { key: "visuals", label: "🖼️ Visuals" },
+  { key: "edit", label: "✂️ Editing" },
+  { key: "queue", label: "📋 Review Queue" },
 ];
 
 export default function Dashboard() {
   const [feed, setFeed] = useState([]);
+  const [pipelineJobs, setPipelineJobs] = useState([]);
 
-useEffect(() => {
-  const ws = new WebSocket("ws://localhost:8000/ws");
-  ws.onmessage = (e) => {
-    const job = JSON.parse(e.data);
-    setLiveJobs(prev => [job, ...prev.slice(0, 9)]);
-  };
-  return () => ws.close();
-}, []);
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws");
+    ws.onmessage = (e) => {
+      try {
+        const job = JSON.parse(e.data);
+        setFeed((prev) => [job, ...prev.slice(0, 9)]);
+        if (job.steps) {
+          setPipelineJobs((prev) => {
+            const exists = prev.find((j) => j.id === job.id);
+            if (exists) return prev.map((j) => (j.id === job.id ? job : j));
+            return [job, ...prev.slice(0, 4)];
+          });
+        }
+      } catch {}
+    };
+    return () => ws.close();
+  }, []);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["stats"],
     queryFn: () => fetch("/api/stats").then((r) => r.json()),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
+  });
+
+  const { data: queueData = [] } = useQuery({
+    queryKey: ["queue"],
+    queryFn: () => fetch("/api/queue").then((r) => r.json()),
+    refetchInterval: 5_000,
   });
 
   return (
@@ -50,6 +53,7 @@ useEffect(() => {
         fontFamily: "'Syne', sans-serif",
       }}
     >
+      {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <div
           style={{
@@ -84,7 +88,7 @@ useEffect(() => {
           </span>
         </div>
         <p style={{ color: "#6b6b8a", fontSize: 14 }}>
-          Your ReelForge AI pipeline at a glance
+          Your ReelForge AI pipeline at a glance — refreshes every 5s
         </p>
       </div>
 
@@ -98,30 +102,10 @@ useEffect(() => {
         }}
       >
         {[
-          {
-            key: "total",
-            label: "Generated",
-            color: "#00d4ff",
-            glow: "rgba(0,212,255,0.3)",
-          },
-          {
-            key: "pending",
-            label: "Pending",
-            color: "#ffb300",
-            glow: "rgba(255,179,0,0.3)",
-          },
-          {
-            key: "published",
-            label: "Published",
-            color: "#00e5a0",
-            glow: "rgba(0,229,160,0.3)",
-          },
-          {
-            key: "failed",
-            label: "Failed",
-            color: "#ff4d6d",
-            glow: "rgba(255,77,109,0.3)",
-          },
+          { key: "total", label: "Generated", color: "#00d4ff" },
+          { key: "pending", label: "Pending", color: "#ffb300" },
+          { key: "published", label: "Published", color: "#00e5a0" },
+          { key: "failed", label: "Failed", color: "#ff4d6d" },
         ].map((s) => (
           <div
             key={s.key}
@@ -149,13 +133,138 @@ useEffect(() => {
                 fontWeight: 700,
                 color: s.color,
                 lineHeight: 1,
-                marginBottom: 6,
               }}
             >
               {isLoading ? "…" : stats?.[s.key] ?? "0"}
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Pipeline Progress */}
+      <div
+        style={{
+          background: "#0d0d14",
+          border: "1px solid rgba(120,80,255,0.12)",
+          borderRadius: 12,
+          padding: "20px",
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 18,
+          }}
+        >
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#f0eeff" }}>
+            📋 Pipeline Progress
+          </span>
+          <span style={{ fontSize: 11, color: "#6b6b8a" }}>polls every 5s</span>
+        </div>
+
+        {queueData.length === 0 && pipelineJobs.length === 0 ? (
+          <p style={{ color: "#6b6b8a", fontSize: 13 }}>
+            No pipeline running. Trigger from Settings!
+          </p>
+        ) : (
+          [...pipelineJobs, ...queueData].slice(0, 3).map((job) => (
+            <div
+              key={job.id}
+              style={{
+                background: "#13131e",
+                border: "1px solid rgba(0,229,160,0.2)",
+                borderRadius: 10,
+                padding: "16px",
+                marginBottom: 12,
+              }}
+            >
+              {/* Job Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "#a78bfa",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  #{job.id?.slice(0, 8)}
+                </span>
+                <span
+                  style={{
+                    background: "rgba(0,229,160,0.1)",
+                    border: "1px solid rgba(0,229,160,0.3)",
+                    borderRadius: 6,
+                    padding: "2px 10px",
+                    fontSize: 11,
+                    color: "#00e5a0",
+                    fontWeight: 600,
+                  }}
+                >
+                  ✓ DONE
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div
+                style={{
+                  height: 4,
+                  background: "rgba(255,255,255,0.05)",
+                  borderRadius: 2,
+                  marginBottom: 14,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: "100%",
+                    background: "linear-gradient(90deg, #7c4dff, #00e5a0)",
+                    borderRadius: 2,
+                  }}
+                />
+              </div>
+
+              {/* Steps */}
+              {PIPELINE_STEPS.map((step) => (
+                <div
+                  key={step.key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "6px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 3,
+                      background: "rgba(0,229,160,0.2)",
+                      border: "1px solid rgba(0,229,160,0.4)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#9898b8", flex: 1 }}>
+                    {step.label}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#00e5a0" }}>✓</span>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Live Activity Feed */}
