@@ -87,8 +87,9 @@ export default function Queue() {
               gap: 20,
             }}
           >
+            {/* Video Player */}
             <video
-              src={job.video_url || ""}
+              src={job.video ? `/${job.video}` : ""}
               controls
               style={{
                 width: 100,
@@ -99,6 +100,8 @@ export default function Queue() {
                 flexShrink: 0,
               }}
             />
+
+            {/* Job Details */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p
                 style={{
@@ -108,12 +111,19 @@ export default function Queue() {
                   marginBottom: 6,
                 }}
               >
-                {job.script?.trend?.title || job.id}
+                {job.script?.hook || job.script?.trend?.title || job.id}
               </p>
               <p style={{ color: "#9898b8", fontSize: 13, marginBottom: 6 }}>
                 {job.script?.body}
               </p>
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  marginTop: 8,
+                  flexWrap: "wrap",
+                }}
+              >
                 <span
                   style={{
                     fontSize: 11,
@@ -126,8 +136,15 @@ export default function Queue() {
                 <span style={{ fontSize: 11, color: "#ffb300" }}>
                   {job.status}
                 </span>
+                {job.script?.caption && (
+                  <span style={{ fontSize: 11, color: "#7c4dff" }}>
+                    {job.script.caption}
+                  </span>
+                )}
               </div>
             </div>
+
+            {/* Approve / Reject Buttons */}
             <div
               style={{
                 display: "flex",
