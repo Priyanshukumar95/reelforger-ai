@@ -4,11 +4,18 @@ from moviepy.editor import (
     concatenate_videoclips, CompositeVideoClip, TextClip
 )
 from moviepy.video.tools.subtitles import SubtitlesClip
-import whisper, pathlib, logging
+from moviepy.config import change_settings
+import whisper, pathlib, logging, os, platform
 from config import settings
 
-log = logging.getLogger("VideoEditor")
+# Auto-detect OS and set correct ImageMagick path
+if platform.system() == "Windows":
+    change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
+else:
+    # Linux / Docker
+    change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
+log = logging.getLogger("VideoEditor")
 _whisper_model = None
 
 def get_whisper():
@@ -20,10 +27,16 @@ def get_whisper():
 def add_captions(video, audio_path: str):
     model = get_whisper()
     result = model.transcribe(audio_path, fp16=False)
+
+    # Correct format for SubtitlesClip — ((start, end), text)
     subs = [
-        (seg["start"], seg["end"], seg["text"].strip())
+        ((seg["start"], seg["end"]), seg["text"].strip())
         for seg in result["segments"]
     ]
+
+    if not subs:
+        log.warning("[Editor] No subtitles generated, skipping captions")
+        return video
 
     def make_caption(txt):
         return TextClip(
@@ -42,9 +55,12 @@ def create_reel(job: dict) -> str:
     images     = job["image_paths"]
     audio_path = job["audio_path"]
     job_id     = job["id"]
-    duration   = 30
 
+    # Use actual audio duration instead of hardcoded 30 seconds
     audio    = AudioFileClip(audio_path)
+    duration = audio.duration
+    log.info(f"[Editor] Audio duration: {duration:.2f}s")
+
     dur_each = duration / max(len(images), 1)
     clips    = []
 
@@ -53,12 +69,17 @@ def create_reel(job: dict) -> str:
              .set_duration(dur_each)
              .resize((1080, 1920))
              .fadein(0.3).fadeout(0.3))
-        c = c.resize(lambda t: 1 + 0.02 * t)  # Ken Burns zoom effect
+        c = c.resize(lambda t: 1 + 0.02 * t)
         clips.append(c)
 
     video = concatenate_videoclips(clips, method="compose")
-    video = video.set_audio(audio.set_duration(duration))
-    video = add_captions(video, audio_path)
+    video = video.set_audio(audio)
+
+    # Try captions — if it fails, video still gets created without them
+    try:
+        video = add_captions(video, audio_path)
+    except Exception as e:
+        log.warning(f"[Editor] Captions failed, skipping: {e}")
 
     out = pathlib.Path(settings.OUTPUT_DIR)
     out.mkdir(exist_ok=True)

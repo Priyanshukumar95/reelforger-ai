@@ -21,15 +21,27 @@ export default function Queue() {
     onSuccess: () => qc.invalidateQueries(["queue"]),
   });
 
-  if (isLoading) return <div className="p-8 text-gray-500">Loading queue…</div>;
+  if (isLoading)
+    return <div style={{ padding: 32, color: "#6b6b8a" }}>Loading queue…</div>;
 
   if (jobs.length === 0)
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-6xl mb-4">🎬</p>
-          <p className="text-gray-400 text-lg">No reels awaiting review</p>
-          <p className="text-gray-600 text-sm mt-2">
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#050508",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'Syne', sans-serif",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: 64, marginBottom: 16 }}>🎬</p>
+          <p style={{ color: "#9898b8", fontSize: 18 }}>
+            No reels awaiting review
+          </p>
+          <p style={{ color: "#6b6b8a", fontSize: 13, marginTop: 8 }}>
             Trigger the pipeline from Settings
           </p>
         </div>
@@ -37,42 +49,141 @@ export default function Queue() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-cyan-400">🎬 Review Queue</h1>
-        <p className="text-gray-500 mt-1 text-sm">
-          {jobs.length} reel(s) awaiting review
+    <div
+      style={{
+        padding: "28px 32px",
+        minHeight: "100vh",
+        background: "#050508",
+        fontFamily: "'Syne', sans-serif",
+      }}
+    >
+      <div style={{ marginBottom: 28 }}>
+        <h1
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#f0eeff",
+            letterSpacing: "-0.5px",
+          }}
+        >
+          🎬 Review Queue
+        </h1>
+        <p style={{ color: "#6b6b8a", fontSize: 14, marginTop: 4 }}>
+          {jobs.length} reel{jobs.length !== 1 ? "s" : ""} awaiting review
         </p>
       </div>
-      <div className="space-y-4">
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {jobs.map((job) => (
           <div
             key={job.id}
-            className="bg-gray-900 rounded-2xl p-5 border border-gray-800 flex gap-4"
+            style={{
+              background: "#0d0d14",
+              border: "1px solid rgba(120,80,255,0.12)",
+              borderRadius: 12,
+              padding: 20,
+              display: "flex",
+              alignItems: "center",
+              gap: 20,
+            }}
           >
+            {/* Video Player */}
             <video
-              src={job.video_url || ""}
+              src={job.video ? `/${job.video}` : ""}
               controls
-              className="w-28 h-48 rounded-xl object-cover bg-black flex-shrink-0"
+              style={{
+                width: 100,
+                height: 160,
+                borderRadius: 10,
+                objectFit: "cover",
+                background: "#000",
+                flexShrink: 0,
+              }}
             />
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-white text-base truncate">
-                {job.id}
+
+            {/* Job Details */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  fontWeight: 700,
+                  color: "#f0eeff",
+                  fontSize: 15,
+                  marginBottom: 6,
+                }}
+              >
+                {job.script?.hook || job.script?.trend?.title || job.id}
               </p>
-              <p className="text-gray-500 text-xs mt-2">{job.status}</p>
+              <p style={{ color: "#9898b8", fontSize: 13, marginBottom: 6 }}>
+                {job.script?.body}
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  marginTop: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b6b8a",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  ID: {job.id}
+                </span>
+                <span style={{ fontSize: 11, color: "#ffb300" }}>
+                  {job.status}
+                </span>
+                {job.script?.caption && (
+                  <span style={{ fontSize: 11, color: "#7c4dff" }}>
+                    {job.script.caption}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-2 flex-shrink-0">
+
+            {/* Approve / Reject Buttons */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                flexShrink: 0,
+              }}
+            >
               <button
                 onClick={() => approve.mutate(job.id)}
                 disabled={approve.isPending}
-                className="bg-green-600 hover:bg-green-500 disabled:opacity-40 px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{
+                  background: "#00c853",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "10px 22px",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  opacity: approve.isPending ? 0.5 : 1,
+                }}
               >
                 ✓ Approve
               </button>
               <button
                 onClick={() => reject.mutate(job.id)}
                 disabled={reject.isPending}
-                className="bg-gray-800 hover:bg-red-900/50 border border-red-800/50 px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{
+                  background: "transparent",
+                  color: "#ff4d6d",
+                  border: "1px solid #ff4d6d50",
+                  borderRadius: 8,
+                  padding: "10px 22px",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  opacity: reject.isPending ? 0.5 : 1,
+                }}
               >
                 ✗ Reject
               </button>

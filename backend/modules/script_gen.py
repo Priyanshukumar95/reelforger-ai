@@ -1,7 +1,11 @@
 import openai, redis, json
 from config import settings
-client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+
+client = openai.OpenAI(
+    api_key=settings.OPENAI_API_KEY, base_url="https://api.groq.com/openai/v1"
+)
 r = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
 SYSTEM_PROMPT = """You are a viral short-form scriptwriter.
 Given a trending topic write a reel script with:
 1. HOOK (0-3s): Bold attention-grabbing opening line.
@@ -11,6 +15,8 @@ Given a trending topic write a reel script with:
 5. HASHTAGS: 10 relevant hashtags as a list.
 Return ONLY valid JSON. No markdown. No explanation.
 Schema: {hook, body, cta, caption, hashtags: []}"""
+
+
 def generate_script(trend: dict) -> dict:
     prompt = (
         f"Trend: {trend['title']}\n"
@@ -19,10 +25,10 @@ def generate_script(trend: dict) -> dict:
     )
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt},
+                {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
             temperature=0.8,
@@ -32,14 +38,24 @@ def generate_script(trend: dict) -> dict:
     except Exception as e:
         print(f"[ScriptGen] GPT error: {e}")
         script = {
-            "hook":     f"Did you know about {trend['title'][:40]}?",
-            "body":     "Here's what everyone is talking about right now.",
-            "cta":      "Follow for more trending content!",
-            "caption":  f"Trending now \U0001f525\n{trend['title'][:50]}",
-            "hashtags": ["#trending","#viral","#news","#reels","#shorts",
-                         "#fyp","#ai","#tech","#learn","#today"],
+            "hook": f"Did you know about {trend['title'][:40]}?",
+            "body": "Here's what everyone is talking about right now.",
+            "cta": "Follow for more trending content!",
+            "caption": f"Trending now 🔥\n{trend['title'][:50]}",
+            "hashtags": [
+                "#trending",
+                "#viral",
+                "#news",
+                "#reels",
+                "#shorts",
+                "#fyp",
+                "#ai",
+                "#tech",
+                "#learn",
+                "#today",
+            ],
         }
-    script["trend"]  = trend
+    script["trend"] = trend
     script["status"] = "pending_review"
     r.lpush("script_queue", json.dumps(script))
     return script
